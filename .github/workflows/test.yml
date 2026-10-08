@@ -1,0 +1,45 @@
+# Tests and lint for the applet. All run without a Plasma session: the
+# JavaScript libraries are loaded under Node (see tests/), the QML files are
+# checked statically by qmllint, README.md is checked with markdownlint.
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: make test
+        run: make test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shellcheck
+        # shellcheck is preinstalled on the GitHub runners.
+        run: shellcheck --severity=warning tools/*.sh
+
+      - name: markdownlint
+        # npx pulls the pinned CLI, the same call as the lint-md Make target.
+        run: npx --yes markdownlint-cli@0.43.0 README.md
+
+      # qmllint needs the QML modules of Plasma (org.kde.plasma.*). They are not
+      # installed on the runner, so this step is deliberately only a hint;
+      # authoritative is `make lint` on a system with Plasma 6.
+      - name: qmllint (advisory only)
+        continue-on-error: true
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq qt6-declarative-dev-tools
+          make lint

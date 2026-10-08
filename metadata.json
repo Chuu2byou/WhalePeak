@@ -1,0 +1,21 @@
+{
+  "KPlugin": {
+    "Id": "com.github.weiting.whalepeak",
+    "Name": "WhalePeak",
+    "Description": "DeepSeek peak-hour status and local schedule timeline",
+    "Icon": "whalepeak",
+    "Category": "Utilities",
+    "Version": "1.0.0",
+    "License": "GPL-2.0-or-later",
+    "Authors": [
+      {
+        "Name": "Chuu2byou"
+      }
+    ],
+    "FormFactors": [
+      "desktop"
+    ]
+  },
+  "KPackageStructure": "Plasma/Applet",
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

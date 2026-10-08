@@ -1,0 +1,5 @@
+# Build output of the scripts in tools/
+dist/
+
+# Built widget packages do not belong in the source tree
+*.plasmoid
