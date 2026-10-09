@@ -17,6 +17,12 @@ var BALANCE_API_URL = "https://api.deepseek.com/user/balance";
 // keeps the same value as KEY_TIMEOUT (shell, see tools/lib.sh).
 var WALLET_TIMEOUT_MS = 20000;
 
+// String(value || "") would swallow a numeric 0 because 0 is falsy. The API
+// mostly sends strings, but a real zero balance must survive.
+function fieldText(value) {
+    return value === undefined || value === null ? "" : String(value);
+}
+
 // Result shape for every error case, so callers only check one path.
 function emptyResult(state, httpStatus) {
     return {
@@ -59,10 +65,10 @@ function parseBalance(httpStatus, responseText) {
             continue;
         }
         entries.push({
-            currency: String(info.currency || ""),
-            totalBalance: String(info.total_balance || ""),
-            grantedBalance: String(info.granted_balance || ""),
-            toppedUpBalance: String(info.topped_up_balance || "")
+            currency: fieldText(info.currency),
+            totalBalance: fieldText(info.total_balance),
+            grantedBalance: fieldText(info.granted_balance),
+            toppedUpBalance: fieldText(info.topped_up_balance)
         });
     }
 

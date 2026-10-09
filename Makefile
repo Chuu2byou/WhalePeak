@@ -5,6 +5,7 @@
 #   make check       compare source and installed version
 #   make uninstall   remove the applet and the icon
 #   make package     build dist/whalepeak.plasmoid
+#   make release     tag the current version and push the tag
 #   make test        run the unit tests
 #   make probe       render and check the timeline without plasmashell
 #   make images      render the images in assets/ (README)
@@ -15,7 +16,7 @@
 
 SHELL := bash
 
-.PHONY: help install update check uninstall package test probe images lint lint-md bump clean
+.PHONY: help install update check uninstall package release test probe images lint lint-md bump clean
 
 help:
 	@echo "WhalePeak"
@@ -25,6 +26,7 @@ help:
 	@echo "  make check       compare source and installed version"
 	@echo "  make uninstall   remove the applet and the icon"
 	@echo "  make package     build dist/whalepeak.plasmoid"
+	@echo "  make release     tag the current version and push the tag"
 	@echo "  make test        run the unit tests"
 	@echo "  make probe       render and check the timeline without plasmashell"
 	@echo "  make images      render the images in assets/ (README)"
@@ -47,6 +49,9 @@ uninstall:
 
 package:
 	@tools/package.sh
+
+release:
+	@tools/release.sh
 
 test:
 	@node --test tests/*.js

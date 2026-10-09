@@ -83,17 +83,17 @@ Right-click the widget → *Settings…*:
 - **Remaining balance** – show the remaining balance (see below).
 
 Without custom entries only the base rule applies: **weekdays are peak, weekends
-are off-peak** – no holiday calendar is bundled. If the timeline touches a year
-without entries, *Calendar coverage incomplete* appears. The interface is
-currently available in English only (`po/` is still missing).
+are off-peak** – no holiday calendar is bundled. As soon as at least one entry
+exists and the forecast touches a year without entries, *Calendar coverage
+incomplete* appears. The interface is currently available in English only
+(`po/` is still missing).
 
 ## Usage
 
-- **Left click on the status dot** opens the DeepSeek usage page
-  <https://platform.deepseek.com/usage>.
-- **Middle click on the status dot** or **right-click → *Show details***
-  expands the widget; **right-click → *Open DeepSeek usage page*** opens the
-  same page.
+- **Left click on the status dot** or **right-click → *Show details***
+  expands the widget.
+- **Middle click on the status dot** or **right-click → *Open DeepSeek usage
+  page*** opens the DeepSeek usage page <https://platform.deepseek.com/usage>.
 
 ## Setting up the remaining balance
 

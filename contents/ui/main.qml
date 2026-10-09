@@ -13,13 +13,10 @@ import "../code/schedule.js" as Schedule
 PlasmoidItem {
     id: root
 
-    // For the popup Plasma can either draw only its own frame (opaque or blurred,
-    // but with square corners: for TranslucentBackground the theme hands out the
-    // rectangular surface widgets/translucentbackground) or none at all. That is
-    // why FullView paints the card itself: NoBackground disables the Plasma
-    // frame, otherwise a square surface would sit behind the rounded card. The
-    // hint only takes effect here on the root item; Plasma ignores it on the
-    // fullRepresentation item.
+    // The panel shows only the dot, so the applet itself paints no background.
+    // This hint covers the panel representation only: the popup frame is the
+    // shell's business (CompactApplet.qml sets the dialog's backgroundHints on
+    // its own), which is why FullView paints its card on top of that frame.
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
 
     property double nowMs: Date.now()
@@ -40,7 +37,9 @@ PlasmoidItem {
     readonly property var nextChange: Schedule.getNextChange(nextChangeKeyMs, calendarData, scheduleOptions)
     readonly property bool nextChangeFound: nextChange.ms !== null
     readonly property double remainingMs: nextChangeFound ? Math.max(0, nextChange.ms - nowMs) : 0
-    readonly property string remainingText: nextChangeFound ? formatDuration(remainingMs) : i18n("No change found in 30 days")
+    readonly property string remainingText: nextChangeFound
+        ? Duration.formatDuration(remainingMs, translateText)
+        : i18n("No change found in 30 days")
     readonly property bool forecastCovered: currentStatus.calendarCovered && nextChange.calendarCovered
     // Without custom entries only the base rule applies - an incomplete calendar
     // is then not worth a notice, otherwise the warning would be permanent.
@@ -115,13 +114,13 @@ PlasmoidItem {
     // status and the remaining time as its second line, so the time is readable
     // there too - without having to hover exactly and without pinning it.
     readonly property string statusText: currentStatus.isPeak ? i18n("Peak") : i18n("Off-peak")
-    readonly property string balanceToolTip: balanceEnabled && balanceState === "ok" && balanceEntry !== null
-        ? i18n("Balance: %1", balanceText)
-        : ""
-    toolTipSubText: {
-        var base = nextChangeFound ? i18n("%1 \u00b7 %2 left", statusText, remainingText) : statusText;
-        return balanceToolTip.length > 0 ? i18n("%1 \u00b7 %2", base, balanceToolTip) : base;
-    }
+    readonly property bool balanceShown: balanceEnabled && balanceState === "ok" && balanceEntry !== null
+    // Wording lives in duration.js, so the panel tooltip, the render fixture and
+    // the tests cannot drift apart.
+    toolTipSubText: Duration.tooltipSubText(statusText,
+        nextChangeFound ? remainingText : "",
+        balanceShown ? balanceText : "",
+        translateText)
 
     compactRepresentation: CompactView {
         isVertical: root.Plasmoid.formFactor === PlasmaCore.Types.Vertical
@@ -136,10 +135,18 @@ PlasmoidItem {
         id: fullView
         readonly property string activeDisplayMode: ["combined", "status", "timeline"].indexOf(plasmoid.configuration.displayMode) >= 0
             ? plasmoid.configuration.displayMode : "combined"
-        Layout.minimumWidth: 300
-        Layout.minimumHeight: fullView.implicitHeight
+        // The popup is pinned to the card. Plasma's popup remembers its size in
+        // the applet configuration (popupWidth/popupHeight) and stops following
+        // the content once such a value exists, so the window kept the size of
+        // Plasma's placeholder before the first expansion. Only minimum/maximum
+        // are reapplied on every content change, hence min == max == implicit
+        // size: that also pulls a stale stored size back to the card.
         // FullView.implicitWidth is the single source for the card width.
+        Layout.minimumWidth: fullView.implicitWidth
+        Layout.maximumWidth: fullView.implicitWidth
         Layout.preferredWidth: fullView.implicitWidth
+        Layout.minimumHeight: fullView.implicitHeight
+        Layout.maximumHeight: fullView.implicitHeight
         Layout.preferredHeight: fullView.implicitHeight
         currentStatus: root.currentStatus
         coverageNotice: root.coverageNotice
@@ -159,10 +166,10 @@ PlasmoidItem {
         onBalanceRefreshRequested: root.refreshBalance()
     }
 
-    // Because the left click on the status dot opens the link, the detail view
-    // would otherwise be unreachable: per the KDE docs a custom
-    // compactRepresentation has to trigger the expansion itself. The middle click
-    // on the dot and this context menu entry do exactly that.
+    // A custom compactRepresentation does not expand on its own - per the KDE
+    // docs it has to trigger the expansion itself. The left click on the dot and
+    // this context menu entry do exactly that; the middle click opens the usage
+    // page.
     Plasmoid.contextualActions: [
         PlasmaCore.Action {
             text: i18n("Open DeepSeek usage page")
@@ -172,7 +179,7 @@ PlasmoidItem {
         PlasmaCore.Action {
             text: i18n("Show details")
             icon.name: "view-visible"
-            onTriggered: root.expandFromCompact()
+            onTriggered: root.expandFromContextMenu()
         }
     ]
 
@@ -326,12 +333,32 @@ PlasmoidItem {
         refreshBalance();
     }
 
-    // Expands the applet from the panel. Used by the "Show details" context action
-    // and by the middle click on the dot; the left click stays on the usage page.
-    // Set through the root item's own expanded property, the same way Plasma's own
+    // Expands the applet from the panel. Used by the left click on the dot; set
+    // through the root item's own expanded property, the same way Plasma's own
     // applets do it.
     function expandFromCompact() {
         root.expanded = true;
+    }
+
+    // "Show details" sits in Plasma's own context menu, and that menu is a window
+    // of its own: while its onTriggered runs, the menu still holds mouse and
+    // keyboard. Expanding right there opened the popup, and the menu's dismissal
+    // deactivated it again in the same instant - the window only flashed. Without
+    // another window open, which normally takes over the activation, that happened
+    // every time. So the expansion waits until the menu has closed and released
+    // the grab; the popup then opens and keeps the focus.
+    function expandFromContextMenu() {
+        expandDelay.restart();
+    }
+
+    Timer {
+        id: expandDelay
+        // Long enough for the menu window to disappear and the focus change to
+        // arrive; the shell waits the same 100 ms before it syncs the popup
+        // (expandedSync in CompactApplet.qml).
+        interval: 100
+        repeat: false
+        onTriggered: root.expandFromCompact()
     }
 
     // A changed wallet, folder or entry makes a running chain pointless: it would
@@ -347,8 +374,11 @@ PlasmoidItem {
     }
 
     // Aborts a running wallet query, so neither process nor HTTP request is left
-    // behind.
+    // behind. The request id is bumped first, so a late answer from the aborted
+    // request can no longer overwrite a newer state - the same guard the timeout
+    // uses.
     function abortWalletRead() {
+        balanceRequestId += 1;
         if (balanceRequest !== null) {
             balanceRequest.abort();
             balanceRequest = null;
@@ -422,17 +452,10 @@ PlasmoidItem {
         balanceState = (result.state === "ok" && entry === null) ? "empty" : result.state;
     }
 
-    function formatDuration(milliseconds) {
-        var parts = Duration.splitDuration(milliseconds);
-        if (parts.days > 0) {
-            return i18n("%1 d %2 h", parts.days, parts.hours);
-        }
-        if (parts.hours > 0) {
-            return i18n("%1 h %2 min", parts.hours, parts.minutes);
-        }
-        if (parts.minutes > 0) {
-            return i18n("%1 min %2 s", parts.minutes, parts.seconds);
-        }
-        return i18n("%1 s", parts.seconds);
+    // Bridge so the shared text formatters in duration.js can reach i18n(), which
+    // only exists inside QML. The trailing placeholders are undefined for the
+    // shorter texts; i18n() ignores unused arguments.
+    function translateText(text, first, second) {
+        return i18n(text, first, second);
     }
 }

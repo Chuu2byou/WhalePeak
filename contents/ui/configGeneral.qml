@@ -108,7 +108,7 @@ KCM.SimpleKCM {
             wrapMode: Text.WordWrap
             opacity: 0.7
             font.pointSize: 9
-            text: i18n("Glass paints a translucent surface of its own with rounded corners. Solid paints the same surface fully opaque. Transparent draws nothing, so the text sits directly on the desktop and can be hard to read.")
+            text: i18n("Glass paints a translucent surface of its own with rounded corners. Solid paints the same surface fully opaque. Transparent draws no card of its own, so the shell's popup background shows through and the text can be hard to read.")
         }
 
         RowLayout {
@@ -208,9 +208,10 @@ KCM.SimpleKCM {
             implicitWidth: 300
             implicitHeight: 120
             // Grows with the dialog width, so wider windows do not lock the date
-            // lines into a 300 px wide box.
+            // lines into a 300 px wide box. Wrapping instead of clipping keeps a
+            // long comment line visible; the short date lines are unaffected.
             Layout.fillWidth: true
-            wrapMode: TextEdit.NoWrap
+            wrapMode: TextEdit.Wrap
             placeholderText: i18n("One entry per line:\n2026-10-01=holiday\n2026-10-10=workday\nLines starting with # are comments.")
         }
 
@@ -337,6 +338,10 @@ KCM.SimpleKCM {
     // KWallet password dialog, and nobody who only wants to change the display
     // mode should see that. The check runs on click - and this timer aborts a
     // hanging call instead of leaving the page stuck.
+    //
+    // Like the widget's walletTimeout it is a single deadline for the whole chain
+    // (write, read and HTTP check), so it is started once at the beginning and
+    // deliberately not restarted between the phases.
     Timer {
         id: keyTimeout
         interval: page.keyTimeoutMs
@@ -459,7 +464,6 @@ KCM.SimpleKCM {
     // required - the same path as in main.qml.
     function verifyKey(key) {
         page.keyState = "checking";
-        keyTimeout.restart();
         var xhr = new XMLHttpRequest();
         page.verifyRequest = xhr;
         xhr.open("GET", page.balanceApiUrl);
@@ -527,7 +531,6 @@ KCM.SimpleKCM {
                 return;
             }
             page.keyState = "reading";
-            keyTimeout.restart();
             walletReader.connectSource(Balance.readKeyCommand(
                 page.cfg_walletName,
                 page.cfg_walletFolder,

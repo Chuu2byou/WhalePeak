@@ -91,6 +91,28 @@ test("next change finds the first transition across date classifications", () =>
     assert.equal(nextChange.toPeak, true);
 });
 
+test("peak windows start inclusive and end exclusive", () => {
+    const cal = calendar();
+    const tuesday = Date.UTC(2026, 9, 6); // 2026-10-06 is a Tuesday
+    const at = (minutes) => schedule.getStatus(tuesday + minutes * 60 * 1000, cal, defaultOptions).isPeak;
+
+    assert.equal(at(59), false);
+    assert.equal(at(60), true);
+    assert.equal(at(239), true);
+    assert.equal(at(240), false);
+    assert.equal(at(360), true);
+    assert.equal(at(600), false);
+});
+
+test("next change reports the transition back to off-peak", () => {
+    const cal = calendar();
+    const insidePeak = Date.UTC(2026, 9, 6, 2, 0); // Tuesday, inside the first window
+    const nextChange = schedule.getNextChange(insidePeak, cal, defaultOptions);
+
+    assert.equal(nextChange.ms, Date.UTC(2026, 9, 6, 4, 0));
+    assert.equal(nextChange.toPeak, false);
+});
+
 test("reports no transition without losing the scanned coverage", () => {
     const holidays = [];
     for (let day = 0; day <= 31; day++) {

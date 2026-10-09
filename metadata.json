@@ -5,7 +5,7 @@
     "Description": "DeepSeek peak-hour status and local schedule timeline",
     "Icon": "whalepeak",
     "Category": "Utilities",
-    "Version": "1.0.0",
+    "Version": "1.0.1",
     "License": "GPL-2.0-or-later",
     "Authors": [
       {

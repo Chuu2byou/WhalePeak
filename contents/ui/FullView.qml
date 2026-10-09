@@ -73,8 +73,8 @@ Item {
 
     implicitHeight: content.implicitHeight + contentMargins * 2
 
-    // The widget paints its surface itself, because main.qml disabled the Plasma
-    // frame with NoBackground (Plasma frames are either opaque or square). The
+    // The widget paints its card on top of the popup frame Plasma draws around
+    // it - that frame belongs to the shell, the applet cannot switch it off. The
     // colours come from the selected theme: "glass" shows the card colour at the
     // configured opacity, "solid" opaque, "transparent" without a surface.
     readonly property color panelColor: root.theme.background
@@ -91,7 +91,11 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: root.backgroundStyle !== "transparent"
-        radius: 10
+        // Same radius as the Plasma popup frame around the card (Kirigami's own
+        // popups use this value too), so the card corners cannot stick out over
+        // the frame's corners. cornerRadius was added after Plasma 6.0, so on an
+        // older Kirigami the previous fixed value keeps the corners round.
+        radius: Kirigami.Units.cornerRadius !== undefined ? Kirigami.Units.cornerRadius : 10
         color: root.surfaceColor
         // Thin border, so the card stays recognisable as a surface even over a
         // bright wallpaper.
