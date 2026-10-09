@@ -8,14 +8,14 @@ Item {
 
     required property bool isVertical
     required property bool isPeak
-    // Target of the left click on the status dot.
+    // Target of the middle click on the status dot.
     required property string usageUrl
     // Resolved colours (see main.qml): positive = off-peak, negative = peak.
     required property var theme
 
     // The applet reacts to both: the hover is the moment the tooltip (the only
-    // place the balance appears without expanding) is needed, the middle click is
-    // the second way to the detail view. The left click stays on the usage page.
+    // place the balance appears without expanding) is needed, the left click
+    // opens the detail view. The middle click stays on the usage page.
     signal hovered()
     signal expandRequested()
 
@@ -32,11 +32,11 @@ Item {
     clip: true
 
     // For assistive tools: the dot is the only indicator, so it carries the status
-    // as its name and the activation opens the same page as the click.
+    // as its name and the activation opens the same view as the left click.
     Accessible.role: Accessible.Button
     Accessible.name: root.isPeak ? i18n("DeepSeek: peak hours") : i18n("DeepSeek: off-peak")
-    Accessible.description: i18n("Opens the DeepSeek usage page")
-    Accessible.onPressAction: Qt.openUrlExternally(root.usageUrl)
+    Accessible.description: i18n("Shows the peak-hour details")
+    Accessible.onPressAction: root.expandRequested()
 
     // Tooltip and expanded window carry the text; the panel shows only the dot, so
     // the applet does not stick out into its neighbours.
@@ -48,10 +48,10 @@ Item {
         color: root.isPeak ? root.theme.negative : root.theme.positive
     }
 
-    // The left click on the dot opens the DeepSeek usage page; the middle click
-    // asks the applet to expand, so the detail view is reachable with a single
-    // click too. Right clicks stay untouched (acceptedButtons), so the Plasma
-    // context menu still appears; the hover feeds the balance refresh in main.qml.
+    // The left click on the dot asks the applet to expand, the middle click opens
+    // the DeepSeek usage page. Right clicks stay untouched (acceptedButtons), so
+    // the Plasma context menu still appears; the hover feeds the balance refresh
+    // in main.qml.
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
@@ -59,7 +59,7 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onEntered: root.hovered()
         onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton) {
+            if (mouse.button === Qt.LeftButton) {
                 root.expandRequested();
                 return;
             }

@@ -45,6 +45,11 @@ function cellStarts(nowMs, spanHours) {
 // Start instants of the axis labels: local multiples of stepHours that fall
 // inside the window. The left edge itself is not part of it - it is the current
 // instant and would only be readable half cut off there.
+//
+// Known limitation: the steps are absolute (HOUR_MS) while the filter uses the
+// local hour. Around a daylight-saving change the gap between two labels can
+// therefore be one hour more or less, and a local hour can be skipped or
+// repeated. The bar itself (cellStarts/cellRect, absolute hours) is unaffected.
 function tickStarts(nowMs, spanHours, stepHours) {
     var span = spanHours === undefined ? WINDOW_HOURS : spanHours;
     var step = stepHours === undefined ? STEP_HOURS : stepHours;

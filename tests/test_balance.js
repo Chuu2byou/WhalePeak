@@ -170,3 +170,14 @@ test("keeps special characters inside the printf argument", () => {
     // Exactly one pipe character: no second command can come out of the key.
     assert.equal(command.split("|").length, 2);
 });
+
+// 0 is falsy, so a naive `value || ""` would drop a real zero balance.
+test("keeps a numeric zero balance", () => {
+    const result = balance.parseBalance(200, JSON.stringify({
+        balance_infos: [{ currency: "USD", total_balance: 0 }]
+    }));
+
+    assert.equal(result.state, "ok");
+    assert.equal(result.entries[0].totalBalance, "0");
+    assert.equal(balance.selectBalanceEntry(result.entries).totalBalance, "0");
+});

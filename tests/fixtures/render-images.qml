@@ -11,6 +11,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 import "../../contents/code/calendar.js" as Calendar
 import "../../contents/code/duration.js" as Duration
 import "../../contents/code/palette.js" as Palette
@@ -131,30 +132,26 @@ Item {
     property int jobIndex: 0
     property int failures: 0
 
-    // Same wording as main.qml, joined directly (no i18n() outside plasmashell).
-    // Keep formatDuration() and toolTipText() in sync with main.qml by hand:
-    // these images render the strings, but no test compares them with the applet.
-    function formatDuration(milliseconds) {
-        var parts = Duration.splitDuration(milliseconds);
-        if (parts.days > 0) {
-            return parts.days + " d " + parts.hours + " h";
-        }
-        if (parts.hours > 0) {
-            return parts.hours + " h " + parts.minutes + " min";
-        }
-        if (parts.minutes > 0) {
-            return parts.minutes + " min " + parts.seconds + " s";
-        }
-        return parts.seconds + " s";
+    // The wording comes from duration.js (shared with main.qml), so the images
+    // stay faithful to the applet. Only the %-substitution is local, because the
+    // fixture runs without the i18n() the applet engine injects.
+    function tr(text, first, second) {
+        var values = [first, second];
+        return String(text).replace(/%([12])/g, function (match, index) {
+            var value = values[Number(index) - 1];
+            return value === undefined ? match : String(value);
+        });
     }
 
-    // Mirrors toolTipSubText in main.qml: state, remaining time, balance.
+    function formatDuration(milliseconds) {
+        return Duration.formatDuration(milliseconds, tr);
+    }
+
+    // state, remaining time, balance - the same shape as main.qml's tooltip.
     function toolTipText(ms, status, change) {
         var label = status.isPeak ? "Peak" : "Off-peak";
-        var base = change.ms === null
-            ? label
-            : label + " \u00b7 " + formatDuration(Math.max(0, change.ms - ms)) + " left";
-        return base + " \u00b7 Balance: " + balanceText;
+        var remaining = change.ms === null ? "" : formatDuration(Math.max(0, change.ms - ms));
+        return Duration.tooltipSubText(label, remaining, balanceText, tr);
     }
 
     // Writes one image per job; grabbing the item alone skips the empty space.
@@ -314,7 +311,9 @@ Item {
             // The card floats over the wallpaper, so it casts a soft shadow.
             DropShadow {
                 anchors.fill: combined
-                corner: 10
+                // Matches the card radius in FullView.qml (which falls back for
+                // older Kirigami versions).
+                corner: Kirigami.Units.cornerRadius !== undefined ? Kirigami.Units.cornerRadius : 10
                 spread: 16
             }
 
@@ -355,7 +354,9 @@ Item {
             // The solid card floats over the wallpaper, so it casts a shadow.
             DropShadow {
                 anchors.fill: timelineOnly
-                corner: 10
+                // Matches the card radius in FullView.qml (which falls back for
+                // older Kirigami versions).
+                corner: Kirigami.Units.cornerRadius !== undefined ? Kirigami.Units.cornerRadius : 10
                 spread: 16
             }
 
