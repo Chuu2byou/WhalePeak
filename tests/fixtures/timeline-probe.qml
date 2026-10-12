@@ -1,11 +1,3 @@
-// Probe harness for the timeline: renders contents/ui/Timeline.qml without
-// plasmashell (off-screen) and checks the measured geometry against
-// contents/code/timeline.js and the cell colours against contents/code/schedule.js.
-//
-// Do not run it directly, use tools/probe-timeline.sh: the script creates a
-// throwaway copy in which contents/ sits next to tests/ - only there do the
-// relative imports fit. It additionally replaces i18n(), which does not exist
-// outside plasmashell.
 import QtQuick
 import "../../contents/ui" as Ui
 import "../../contents/code/timeline.js" as TimelineWindow
@@ -14,12 +6,9 @@ import "../../contents/code/schedule.js" as Schedule
 Item {
     id: probeRoot
 
-    // Fixed reference row as in tests/test_timeline.js: the timeline has to cope
-    // with exactly this size and must not depend on its own implicit size.
     width: 400
     height: 43
 
-    // How calendar and options look in the applet, just without user data.
     readonly property var calendarData: ({ holidays: new Set(), workdays: new Set(), coveredYears: [2026] })
     readonly property var scheduleOptions: ({ treatWeekendWorkdayAsPeak: false })
     readonly property var theme: ({
@@ -44,8 +33,6 @@ Item {
         theme: probeRoot.theme
     }
 
-    // Measure only after the first frame: before that the layout has not yet
-    // distributed the widths.
     Timer {
         interval: 50
         repeat: false
@@ -88,16 +75,10 @@ Item {
         return out;
     }
 
-    // Re-render the timeline and collect the drawn rectangles and texts. The
-    // order is left to right, so the model order. The values are copied and not
-    // kept as references: otherwise two snapshots would read the same, already
-    // updated state of the QML items and every shift would be null.
+    // Copy snapshots; QML references would already reflect the next render.
     function render(nowMs) {
         probeRoot.nowMs = nowMs;
 
-        // The timeline paints both tariffs fully opaque (see Timeline.qml), so the
-        // tariff sits in the drawn colour and no longer in the opacity: peak takes
-        // negative, off-peak positive.
         var peakColor = String(probeRoot.theme.negative);
         var all = collect(timeline, []);
         var cells = [];
@@ -148,21 +129,17 @@ Item {
             near(label + " cell " + i + " x", row.cells[i].x, rect.x);
             near(label + " cell " + i + " width", row.cells[i].width, rect.width);
 
-            // The cell colour comes from the tariff classification, not the index.
             var isPeak = Schedule.getStatus(starts[i], probeRoot.calendarData, probeRoot.scheduleOptions).isPeak;
             check(label + " cell " + i + " tariff", isPeak === row.cells[i].peak);
 
             covered += row.cells[i].width;
             leftEdge = Math.min(leftEdge, row.cells[i].x);
             rightEdge = Math.max(rightEdge, row.cells[i].x + row.cells[i].width);
-            // List only visible cells: at the end of the window a cell can
-            // collapse to zero, but it is still checked.
             if (isPeak && row.cells[i].width > 0.01) {
                 peaks.push(TimelineWindow.labelFor(starts[i]));
             }
         }
 
-        // The window starts exactly at "now" and fills the row without gaps.
         near(label + " left edge", leftEdge, 0);
         near(label + " right edge", rightEdge, row.width);
         near(label + " coverage", covered, row.width);
@@ -171,8 +148,6 @@ Item {
         for (i = 0; i < Math.min(row.labels.length, ticks.length); i++) {
             check(label + " label " + i, row.labels[i].text === TimelineWindow.labelFor(ticks[i]));
 
-            // The centre must sit on the hour mark; at the left edge the label is
-            // clamped, so it stays readable.
             var half = row.labels[i].width / 2;
             var centred = Math.max(half, Math.min(row.width - half, row.width * TimelineWindow.fractionOf(ticks[i], nowMs, span)));
             near(label + " label " + i + " centre", row.labels[i].x + half, centred);
@@ -190,8 +165,6 @@ Item {
             + " | labels=" + shown.join(" "));
     }
 
-    // Within an hour only the x position may shift: the window moves rightwards
-    // over the clock, the content slides leftwards.
     function slide() {
         var span = TimelineWindow.WINDOW_HOURS;
         var stepMs = 10 * 60 * 1000;

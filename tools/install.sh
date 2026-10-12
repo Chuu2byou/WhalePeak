@@ -48,16 +48,13 @@ if [ "$CHECK_ONLY" -eq 1 ]; then
         else
             printf 'Status        : update available\n'
         fi
-        # The version alone says nothing about the installed files: a staging
-        # step that failed silently used to leave an old build behind while the
-        # version still matched. So compare the contents as well.
+        # Matching versions do not guarantee matching installed files.
         if [ -d "$INSTALLED_DIR/contents" ]; then
             if diff -rq "$ROOT/contents" "$INSTALLED_DIR/contents" >/dev/null 2>&1; then
                 printf 'Contents      : identical\n'
             else
                 printf 'Contents      : differs from source (run tools/install.sh)\n'
-                # diff exits 1 on differences, which pipefail would turn into an
-                # abort - the listing is only informational.
+                # Differences are informational; do not let pipefail abort.
                 diff -rq "$ROOT/contents" "$INSTALLED_DIR/contents" 2>/dev/null | head -n 20 | sed 's/^/  /' || true
             fi
         fi

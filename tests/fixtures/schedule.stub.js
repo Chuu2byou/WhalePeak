@@ -1,6 +1,4 @@
-// Shape reference for the schedule contract. The values are deliberately
-// trivial; tests/test_schedule.js only checks that every documented field is
-// present with the documented type.
+// Minimal contract stub used by test_schedule.js.
 function getBeijingDateStr(ms) {
     return "2000-01-01";
 }
@@ -18,7 +16,6 @@ function getStatus(ms, cal, opts) {
     };
 }
 
-// Covers the documented exception: no transition within the search horizon.
 function getNextChange(ms, cal, opts) {
     return {
         ms: null,

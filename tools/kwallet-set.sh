@@ -20,8 +20,7 @@ FOLDER="DeepSeek"
 ENTRY="api_key"
 KEY=""
 CHECK_ONLY=0
-# Keep in sync with walletTimeoutMs (contents/ui/main.qml) and keyTimeoutMs
-# (contents/ui/configGeneral.qml).
+# Keep in sync with the QML timeout in balance.js.
 KEY_TIMEOUT=20
 
 while [ "$#" -gt 0 ]; do
@@ -57,16 +56,10 @@ if [ "$CHECK_ONLY" -eq 1 ]; then
     exit 0
 fi
 
-# No key as an argument: read it from stdin. There is deliberately no prompt, so
-# the script stays usable inside scripts and pipelines.
 if [ -z "$KEY" ] && [ ! -t 0 ]; then
     KEY="$(cat)"
 fi
 
-# Same normalisation as contents/code/balance.js (normalizeKey), shared with the
-# other tools via tools/lib.sh: line breaks and surrounding whitespace, one pair
-# of surrounding quotes and a leading "Bearer " are removed, so script and widget
-# store identically.
 KEY="$(printf '%s' "$KEY" | tracker_normalize_key)"
 
 if [ -z "$KEY" ]; then
@@ -74,7 +67,6 @@ if [ -z "$KEY" ]; then
     exit 2
 fi
 
-# printf without a line break, so the key lands in KWallet exactly as given.
 if ! printf '%s' "$KEY" | timeout "$KEY_TIMEOUT" kwallet-query -w "$ENTRY" -f "$FOLDER" "$WALLET"; then
     printf 'Saving failed or aborted after %s s (wallet locked?).\n' "$KEY_TIMEOUT" >&2
     exit 1

@@ -16,7 +16,7 @@ ROOT="$(tracker_root)"
 FIXTURE="$ROOT/tests/fixtures/render-images.qml"
 STUB="$ROOT/tests/fixtures/i18n-stub.js"
 ASSETS="$ROOT/assets"
-# Pins the timeline labels, so the images stay reproducible.
+# Pin timezone for reproducible timeline labels.
 IMAGE_TZ="Europe/Berlin"
 
 for arg in "$@"; do
@@ -40,8 +40,7 @@ STAGE="$(mktemp -d)"
 SHOTS="$(mktemp -d)"
 trap 'rm -rf "$STAGE" "$SHOTS"' EXIT
 
-# Fixture sits under tests/fixtures/, so its relative imports hit the staged
-# contents/ next to it.
+# Stage beside contents/ so the fixture's relative imports resolve.
 mkdir -p "$STAGE/tests/fixtures"
 cp -r "$ROOT/contents" "$STAGE/"
 cp "$FIXTURE" "$STAGE/tests/fixtures/"

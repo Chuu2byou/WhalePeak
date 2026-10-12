@@ -1,29 +1,17 @@
 .pragma library
 
-// Pure logic for the DeepSeek balance query (GET /user/balance) and for the
-// kwallet-query commands. No QML, so the functions run in the Node tests
-// without a Plasma runtime. UI strings and translations stay in QML, because
-// i18n() is not available here.
-//
-// DeepSeek has no endpoint for consumed usage; /user/balance only reports the
-// remaining balance.
+// balance.js - parses the DeepSeek balance API and builds the KWallet commands.
 
-// Single source for the endpoint, so the widget (main.qml) and the settings
-// dialog (configGeneral.qml) cannot drift apart.
 var BALANCE_API_URL = "https://api.deepseek.com/user/balance";
 
-// Deadline for the whole wallet + HTTP chain, shared by the widget
-// (walletTimeoutMs) and the settings dialog (keyTimeoutMs). tools/kwallet-set.sh
-// keeps the same value as KEY_TIMEOUT (shell, see tools/lib.sh).
 var WALLET_TIMEOUT_MS = 20000;
 
-// String(value || "") would swallow a numeric 0 because 0 is falsy. The API
-// mostly sends strings, but a real zero balance must survive.
+// fieldText - returns a JSON field as text, empty for a missing value.
 function fieldText(value) {
     return value === undefined || value === null ? "" : String(value);
 }
 
-// Result shape for every error case, so callers only check one path.
+// emptyResult - the result object for a failed or empty balance request.
 function emptyResult(state, httpStatus) {
     return {
         state: state,
@@ -33,8 +21,7 @@ function emptyResult(state, httpStatus) {
     };
 }
 
-// Flattens the GET /user/balance response. httpStatus 0 means the request
-// never reached the network.
+// parseBalance - turns the /user/balance answer into a result object.
 function parseBalance(httpStatus, responseText) {
     if (httpStatus === 401 || httpStatus === 403) {
         return emptyResult("unauthorized", httpStatus);
@@ -75,14 +62,13 @@ function parseBalance(httpStatus, responseText) {
     return {
         state: "ok",
         httpStatus: httpStatus,
-        // A missing field means the account is usable: the call succeeded.
+        // Treat a missing field as usable after a successful response.
         isAvailable: payload.is_available !== false,
         entries: entries
     };
 }
 
-// Prefers USD (the usual billing currency), otherwise the first entry with a
-// balance. Returns null when there is nothing to show.
+// selectBalanceEntry - the USD entry when there is one, else the first usable one.
 function selectBalanceEntry(entries) {
     if (!Array.isArray(entries) || entries.length === 0) {
         return null;
@@ -104,18 +90,13 @@ function selectBalanceEntry(entries) {
     return fallback;
 }
 
-// Wraps a value in single quotes and escapes embedded apostrophes the POSIX
-// way ('\''). The executable engine runs its commands through the shell, so
-// quoting configuration values is mandatory - without it command injection
-// would be possible.
+// quoteShellArg - wraps a value in single quotes for a shell command line.
+// Commands run through a shell, so quote values to prevent injection.
 function quoteShellArg(value) {
     return "'" + String(value).replace(/'/g, "'\\''") + "'";
 }
 
-// Strips the usual paste leftovers around the key: surrounding whitespace and
-// line breaks, one pair of surrounding quotes and a leading "Bearer ". The key
-// itself stays untouched; tools/kwallet-set.sh mirrors this function so script
-// and widget store the same value.
+// normalizeKey - cleans a pasted key: quotes, whitespace and a Bearer prefix.
 function normalizeKey(raw) {
     var key = String(raw === undefined || raw === null ? "" : raw).trim();
 
@@ -130,22 +111,15 @@ function normalizeKey(raw) {
     return key.replace(/^Bearer\s+/i, "").trim();
 }
 
-// Reads the API key from KWallet. kwallet-query writes the value to stdout.
+// readKeyCommand - the kwallet-query call that reads the key.
 function readKeyCommand(wallet, folder, entry) {
     return "kwallet-query -r " + quoteShellArg(entry)
         + " -f " + quoteShellArg(folder)
         + " " + quoteShellArg(wallet);
 }
 
-// Writes the API key to KWallet. kwallet-query reads the value from stdin,
-// hence the pipe; printf without a line break keeps the key exact.
-//
-// Known limitation: printf receives the key as a command line argument, so it
-// is briefly visible in the local process list (ps). The Plasma "executable"
-// engine runs its command through a shell and offers no stdin, so the key
-// cannot be piped in without such a helper process. The quoting below still
-// prevents command injection; for the lowest exposure store the key once with
-// tools/kwallet-set.sh and let the widget only read it back.
+// writeKeyCommand - the kwallet-query call that stores the key.
+// The executable engine has no stdin, so the key briefly appears in the process list.
 function writeKeyCommand(wallet, folder, entry, key) {
     return "printf %s " + quoteShellArg(key)
         + " | kwallet-query -w " + quoteShellArg(entry)

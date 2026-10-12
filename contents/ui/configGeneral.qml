@@ -1,3 +1,4 @@
+// configGeneral.qml - the settings page: appearance, calendar, balance and API key.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,9 +9,6 @@ import "../code/balance.js" as Balance
 import "../code/calendar.js" as Calendar
 import "../code/palette.js" as Palette
 
-// KCM.SimpleKCM is a Kirigami.ScrollablePage: the settings dialog may be dragged
-// smaller or narrower than its content, then a scroll bar appears instead of
-// clipped fields.
 KCM.SimpleKCM {
     id: page
 
@@ -25,22 +23,12 @@ KCM.SimpleKCM {
     property alias cfg_walletFolder: walletFolder.text
     property alias cfg_walletEntry: walletEntry.text
 
-    // Ablaufzustand: "" | "writing" | "reading" | "checking" | "ok"
-    // | "invalid" | "network" | "apiError" | "writeError" | "readError"
-    // | "timeout"
     property string keyState: ""
-    // Balance from the check ("12.34 USD") or "" when none was reported.
     property string keyBalance: ""
-    // HTTP status of the check, only for the error message.
     property int keyHttpStatus: 0
-    // Distinguishes "stored and verified" from "verified only".
     property bool keyJustStored: false
-    // The running check request, so the timeout really aborts it.
     property var verifyRequest: null
-    // Safety net against a hanging kwallet-query (KWallet password dialog).
-    // Shared with the widget via balance.js; must match main.qml.
     readonly property int keyTimeoutMs: Balance.WALLET_TIMEOUT_MS
-    // Same endpoint as the widget, from balance.js (see main.qml).
     readonly property string balanceApiUrl: Balance.BALANCE_API_URL
 
     readonly property bool keyBusy: keyState === "writing"
@@ -48,11 +36,8 @@ KCM.SimpleKCM {
     readonly property bool canStore: showBalance.checked && !keyBusy
         && Balance.normalizeKey(apiKey.text).length > 0
 
-    // Live evaluation of the text field, so typos show up immediately.
     readonly property var parsedCalendar: Calendar.parseCalendar(customHolidays.text)
 
-    // Picker list of the colour themes: "system" is translated, the theme names
-    // are proper nouns and stay untranslated.
     readonly property var themeModel: {
         var list = [{ "text": i18n("Use Plasma color scheme"), "value": "system" }];
         var names = Palette.themeNames();
@@ -61,13 +46,7 @@ KCM.SimpleKCM {
         }
         return list;
     }
-    // Preview of the colours of the selected theme; null means "system". The
-    // derived off-peak/peak values, so the fields show what the card really
-    // paints.
     readonly property var themePreview: Palette.resolveTheme(visualTheme.currentValue)
-    // The same derivation for the Plasma colour scheme. The border is dimmed from
-    // the text tone as in main.qml, so the preview shows five fields here too and
-    // the field count does not change when switching.
     readonly property var systemPreview: Palette.systemTheme(
         Kirigami.Theme.backgroundColor,
         Kirigami.Theme.textColor,
@@ -76,8 +55,6 @@ KCM.SimpleKCM {
         Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g,
             Kirigami.Theme.textColor.b, 0.18))
 
-    // From here on all visible fields sit in the FormLayout of the scrollable
-    // page; functions, timers and data sources stay at page level.
     Kirigami.FormLayout {
         ComboBox {
             id: displayMode
@@ -152,8 +129,6 @@ KCM.SimpleKCM {
             Kirigami.FormData.label: i18n("Preview")
             spacing: 4
 
-            // Always five colour fields: surface, text, off-peak, peak and border.
-            // With "system" the values come from the Plasma colour scheme.
             Repeater {
                 model: {
                     var shown = page.themePreview === null ? page.systemPreview : page.themePreview;
@@ -207,9 +182,6 @@ KCM.SimpleKCM {
             Kirigami.FormData.label: i18n("Holidays / workdays")
             implicitWidth: 300
             implicitHeight: 120
-            // Grows with the dialog width, so wider windows do not lock the date
-            // lines into a 300 px wide box. Wrapping instead of clipping keeps a
-            // long comment line visible; the short date lines are unaffected.
             Layout.fillWidth: true
             wrapMode: TextEdit.Wrap
             placeholderText: i18n("One entry per line:\n2026-10-01=holiday\n2026-10-10=workday\nLines starting with # are comments.")
@@ -253,9 +225,6 @@ KCM.SimpleKCM {
             text: i18n("Show remaining balance")
         }
 
-        // Pure show/hide helper: wallet, folder and entry stay in the
-        // configuration (the defaults fit almost always) but only appear when
-        // someone really wants to change them.
         CheckBox {
             id: advancedToggle
             text: i18n("Change wallet, folder or entry")
@@ -304,7 +273,6 @@ KCM.SimpleKCM {
                 echoMode: TextInput.Password
                 placeholderText: i18n("sk-…")
                 implicitWidth: 240
-                // Enter stores, so the mouse is not required.
                 onAccepted: page.storeApiKey()
             }
 
@@ -334,29 +302,18 @@ KCM.SimpleKCM {
         }
     }
 
-    // Deliberately no call when the page opens: kwallet-query can trigger the
-    // KWallet password dialog, and nobody who only wants to change the display
-    // mode should see that. The check runs on click - and this timer aborts a
-    // hanging call instead of leaving the page stuck.
-    //
-    // Like the widget's walletTimeout it is a single deadline for the whole chain
-    // (write, read and HTTP check), so it is started once at the beginning and
-    // deliberately not restarted between the phases.
+    // Avoid opening KWallet on page load; one deadline covers the full check.
     Timer {
         id: keyTimeout
         interval: page.keyTimeoutMs
         repeat: false
 
         onTriggered: {
-            // The state first, so a late answer from the aborted process no
-            // longer changes anything.
             page.keyState = "timeout";
             page.abortKeyCheck();
         }
     }
 
-    // Message for all states in one place. The texts stay in QML, because i18n()
-    // is not available in a .pragma-library JS.
     function keyStateText() {
         switch (page.keyState) {
         case "writing":
@@ -410,8 +367,6 @@ KCM.SimpleKCM {
         return Kirigami.Theme.textColor;
     }
 
-    // Aborts running calls, so neither process nor request is left behind:
-    // first the HTTP check, then the kwallet-query calls.
     function abortKeyCheck() {
         if (page.verifyRequest !== null) {
             page.verifyRequest.abort();
@@ -427,7 +382,6 @@ KCM.SimpleKCM {
         }
     }
 
-    // Stores the pasted key and verifies it automatically afterwards.
     function storeApiKey() {
         if (!page.canStore) {
             return;
@@ -444,7 +398,6 @@ KCM.SimpleKCM {
             Balance.normalizeKey(apiKey.text)));
     }
 
-    // Checks the key already stored in KWallet without writing it again.
     function checkStoredKey() {
         if (!showBalance.checked || page.keyBusy) {
             return;
@@ -460,8 +413,6 @@ KCM.SimpleKCM {
             page.cfg_walletEntry));
     }
 
-    // Does the check via XMLHttpRequest, so no external tool such as curl is
-    // required - the same path as in main.qml.
     function verifyKey(key) {
         page.keyState = "checking";
         var xhr = new XMLHttpRequest();
@@ -476,7 +427,6 @@ KCM.SimpleKCM {
             page.verifyRequest = null;
             page.applyVerifyResult(Balance.parseBalance(xhr.status, xhr.responseText));
         };
-        // Network failures give status 0; parseBalance turns that into "error".
         xhr.onerror = function () {
             page.verifyRequest = null;
             page.applyVerifyResult(Balance.parseBalance(0, ""));
@@ -496,8 +446,7 @@ KCM.SimpleKCM {
                 ? entry.totalBalance + " " + entry.currency
                 : "";
             page.keyState = "ok";
-            // Only clear now: the key is verified in KWallet. On an error the
-            // field stays, so it can be corrected.
+            // Clear only after the stored key has been verified.
             apiKey.text = "";
             return;
         }
@@ -508,10 +457,7 @@ KCM.SimpleKCM {
         page.keyState = result.httpStatus === 0 ? "network" : "apiError";
     }
 
-    // Writes the key to KWallet via the shell; kwallet-query reads it from stdin,
-    // hence the printf part from Balance.writeKeyCommand. The exit code 0 only
-    // says that something was written - only reading it back proves that exactly
-    // the entry main.qml will later read is reachable.
+    // Read back the key to verify the exact entry the widget will use.
     P5Support.DataSource {
         id: walletWriter
         engine: "executable"
@@ -553,7 +499,6 @@ KCM.SimpleKCM {
             }
             var key = data["exit code"] === 0 ? String(data.stdout || "").trim() : "";
             if (key.length === 0) {
-                // Wallet missing or locked, folder/entry unknown or empty.
                 keyTimeout.stop();
                 page.keyState = "readError";
                 return;

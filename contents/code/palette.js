@@ -1,21 +1,7 @@
 .pragma library
-// Colour themes for the card, status dot and timeline. Pure data: UI strings and
-// translations stay in QML, because i18n() is not available here.
-//
-// Every theme defines the same five keys:
-//   background  card surface
-//   foreground  text
-//   positive    off-peak (green; Rosé Pine uses cyan there, see below)
-//   negative    peak (red)
-//   border      thin card border
-//
-// "system" is deliberately not an entry in this table: then the colours of the
-// Plasma colour scheme (Kirigami.Theme) apply, and main.qml resolves that.
-//
-// The table keeps the upstream values unchanged. What gets drawn, however, are
-// the derived values from resolveTheme(): only that keeps off-peak and peak above
-// the contrast threshold (see the colour maths below).
-//
+
+// palette.js - the built-in colour themes, their names and the contrast fixes.
+
 // Sources of the colour values (the hex codes are facts, the palettes themselves
 // are MIT licensed - see the "Colour themes" section of the README):
 //   Tokyo Night       tokyo-night/tokyo-night-vscode-theme
@@ -28,7 +14,6 @@
 var SYSTEM_THEME = "system";
 var DEFAULT_OPACITY = 55;
 
-// Display names are proper nouns and therefore not translated.
 var DISPLAY_NAMES = {
     tokyoNight: "Tokyo Night",
     catppuccinMocha: "Catppuccin Mocha",
@@ -83,9 +68,9 @@ var THEMES = {
     }
 };
 
-// Order of the picker list in the settings.
 var THEME_ORDER = ["tokyoNight", "catppuccinMocha", "nord", "rosePine", "everforest", "kanagawa"];
 
+// themeNames - the theme keys in the order the settings window lists them.
 function themeNames() {
     var names = [];
     for (var i = 0; i < THEME_ORDER.length; i += 1) {
@@ -94,19 +79,22 @@ function themeNames() {
     return names;
 }
 
+// isSystemTheme - true for the "system" pseudo theme (the Plasma colours).
 function isSystemTheme(name) {
     return String(name) === SYSTEM_THEME;
 }
 
+// isKnownTheme - true when the name is one of the built-in themes.
 function isKnownTheme(name) {
     return Object.prototype.hasOwnProperty.call(THEMES, String(name));
 }
 
+// displayName - the name to show, falling back to the raw string.
 function displayName(name) {
     return isKnownTheme(name) ? DISPLAY_NAMES[String(name)] : String(name);
 }
 
-// Hand out a copy, so a view cannot modify the table.
+// getTheme - a copy of the theme's colour values, null for an unknown name.
 function getTheme(name) {
     if (!isKnownTheme(name)) {
         return null;
@@ -121,9 +109,7 @@ function getTheme(name) {
     return result;
 }
 
-// Opacity from the configuration: whole number 0..100. Unusable values (for
-// example from a hand-edited configuration) fall back to the default; the views
-// divide by 100 and get the alpha 0..1 from it.
+// clampOpacityPercent - opacity as a whole number 0-100, else the default 55.
 function clampOpacityPercent(value) {
     if (value === null || value === undefined || value === "") {
         return DEFAULT_OPACITY;
@@ -142,30 +128,16 @@ function clampOpacityPercent(value) {
     return number;
 }
 
-// --- Colour maths ----------------------------------------------------------
-// Pure functions on "#rrggbb" values; "#aarrggbb" is read too, with the alpha
-// ignored. Testable without a Plasma runtime.
-//
-// Why derive at all? The upstream palettes are designed for syntax highlighting
-// on their own surface, not for two states side by side. Measured against the
-// card surface, the Nord red barely misses the graphical-object threshold at
-// 3.05:1, and several themes separate green and red hardly in luminance - without
-// colour vision peak and off-peak then look the same.
+// Keep both states at 3:1 contrast and distinguish them by luminance.
 
-// WCAG 1.4.11 (non-text contrast) for graphical objects.
 var MIN_GRAPHIC_CONTRAST = 3.0;
-// Heuristic for red-green colour vision: luminance ratio between peak and
-// off-peak. Deliberately not a WCAG value, WCAG defines no separation between
-// states.
+// Heuristic; WCAG does not define a threshold between states.
 var MIN_STATE_LUMINANCE_RATIO = 1.5;
 
-// Steps in which ensureContrast and stateColors approach the target.
 var CONTRAST_STEPS = 32;
 var LUMINANCE_STEP = 0.04;
 
-// Reads a hex value; null instead of a guessed value when it does not fit.
-// Eight-digit values are "#aarrggbb" (how QML prints a colour with alpha), the
-// alpha is dropped.
+// hexToRgb - parses #rrggbb (or #aarrggbb), null when the value does not fit.
 function hexToRgb(hex) {
     var value = String(hex).trim();
     if (/^#[0-9a-fA-F]{8}$/.test(value)) {
@@ -181,7 +153,7 @@ function hexToRgb(hex) {
     };
 }
 
-// Counterpart to hexToRgb; rounds and clamps to 0..255.
+// rgbToHex - the #rrggbb text of an r/g/b triple with clamped channels.
 function rgbToHex(rgb) {
     function channel(value) {
         var number = Math.round(value);
@@ -197,13 +169,13 @@ function rgbToHex(rgb) {
     return "#" + channel(rgb.r) + channel(rgb.g) + channel(rgb.b);
 }
 
-// Single channel from sRGB to linear light (WCAG formula).
+// linearize - one sRGB channel as a linear value (WCAG relative luminance).
 function linearize(channel) {
     var value = channel / 255;
     return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
 }
 
-// Relative luminance 0..1; null for an unusable hex value.
+// relativeLuminance - WCAG relative luminance of a colour, null for a bad value.
 function relativeLuminance(hex) {
     var rgb = hexToRgb(hex);
     if (rgb === null) {
@@ -212,8 +184,7 @@ function relativeLuminance(hex) {
     return 0.2126 * linearize(rgb.r) + 0.7152 * linearize(rgb.g) + 0.0722 * linearize(rgb.b);
 }
 
-// WCAG contrast 1:1 .. 21:1; null as soon as one value is unusable. Orders the
-// colours itself, so the result is independent of the argument order.
+// contrastRatio - WCAG contrast ratio of two colours, null for a bad value.
 function contrastRatio(colorA, colorB) {
     var luminanceA = relativeLuminance(colorA);
     var luminanceB = relativeLuminance(colorB);
@@ -225,8 +196,7 @@ function contrastRatio(colorA, colorB) {
     return (lighter + 0.05) / (darker + 0.05);
 }
 
-// Mixes two colours; part is the share of the second. So 0.4 is 40 percent of
-// the target colour. Unusable values give null, part is clamped to 0..1.
+// mixColors - mixes two colours: part 0 = the first, 1 = the second.
 function mixColors(colorA, colorB, part) {
     var first = hexToRgb(colorA);
     var second = hexToRgb(colorB);
@@ -250,12 +220,7 @@ function mixColors(colorA, colorB, part) {
     });
 }
 
-// Raises a colour until it reaches the minimum contrast against the surface. The
-// direction follows the surface: towards white on a dark surface, towards black
-// on a light one. Because the target direction pulls the colour away from the
-// surface, the contrast grows monotonically. If the target is unreachable with
-// either endpoint (a mid-grey surface lets neither white nor black reach 3:1),
-// the endpoint with the higher contrast wins.
+// ensureContrast - moves a colour towards white/black until minRatio is reached.
 function ensureContrast(hex, backgroundHex, minRatio) {
     var rgb = hexToRgb(hex);
     if (rgb === null || hexToRgb(backgroundHex) === null) {
@@ -290,10 +255,7 @@ function ensureContrast(hex, backgroundHex, minRatio) {
         : reached;
 }
 
-// Shapes off-peak and peak together: both hold the graphical threshold against
-// the card surface, and they additionally differ in luminance. The distance
-// always grows in the direction that also increases the surface contrast, so
-// neither threshold undoes the other.
+// stateColors - peak/off-peak colours that keep contrast and differ in luminance.
 function stateColors(positiveHex, negativeHex, backgroundHex) {
     var positive = ensureContrast(positiveHex, backgroundHex, MIN_GRAPHIC_CONTRAST);
     var negative = ensureContrast(negativeHex, backgroundHex, MIN_GRAPHIC_CONTRAST);
@@ -306,8 +268,6 @@ function stateColors(positiveHex, negativeHex, backgroundHex) {
         if (contrastRatio(positive, negative) >= MIN_STATE_LUMINANCE_RATIO) {
             break;
         }
-        // On a dark surface the lighter tone moves further up, on a light
-        // surface the darker one moves further down.
         var positiveIsBrighter = relativeLuminance(positive) >= relativeLuminance(negative);
         var target = darkBackground === positiveIsBrighter ? positive : negative;
         var next = mixColors(target, goal, LUMINANCE_STEP);
@@ -323,18 +283,13 @@ function stateColors(positiveHex, negativeHex, backgroundHex) {
     return { positive: positive, negative: negative };
 }
 
-// Like getTheme, but with the drawn off-peak/peak colours. "system" and unknown
-// names give null, so the views need no special case.
+// resolveTheme - the ready-to-use colours of a theme name; null for unknown/system.
 function resolveTheme(name) {
     var base = getTheme(name);
     return base === null ? null : resolveThemeColors(base);
 }
 
-// Takes an already resolved five-key object - the palette from THEMES or the
-// values of the Plasma colour scheme - and returns a copy with contrast-checked
-// positive/negative. The other keys stay untouched. Values that are not a hex
-// colour (for example a QML colour with alpha) are passed through unchanged
-// instead of tinting the view.
+// resolveThemeColors - applies the contrast fixes to a theme or system colour set.
 function resolveThemeColors(theme) {
     if (theme === null || theme === undefined) {
         return null;
@@ -354,11 +309,7 @@ function resolveThemeColors(theme) {
     return result;
 }
 
-// The five values of the Plasma colour scheme (or Breeze Dark in the render
-// fixture) as a theme object. The widget (main.qml) and the settings preview
-// (configGeneral.qml) both build it here, so the key list and the contrast
-// derivation live in one place. The border is passed in already dimmed, because
-// Qt.rgba() is only available in QML, not in a .pragma library.
+// systemTheme - resolves the Plasma colours the popup hands in.
 function systemTheme(background, foreground, positive, negative, border) {
     return resolveThemeColors({
         background: background,
