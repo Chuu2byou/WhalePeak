@@ -35,14 +35,11 @@ fi
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-# The fixture sits in the stage under tests/fixtures/, so its relative imports
-# point at the contents/ next to it.
+# Stage beside contents/ so the fixture's relative imports resolve.
 mkdir -p "$STAGE/tests/fixtures"
 cp -r "$ROOT/contents" "$STAGE/"
 cp "$FIXTURE" "$STAGE/tests/fixtures/"
 
-# The Plasma applet engine provides i18n(); outside plasmashell the staged copy
-# imports the stub from tests/fixtures instead.
 tracker_stub_i18n "$STAGE" "$ROOT/tests/fixtures/i18n-stub.js"
 
 STATUS=0

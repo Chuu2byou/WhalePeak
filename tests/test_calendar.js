@@ -70,7 +70,6 @@ test("impossible dates are reported instead of silently never matching", () => {
         { line: 2, text: "2026-13-01=holiday" },
         { line: 3, text: "2027-02-29=workday" }
     ]);
-    // The 2028 leap day stays valid and still counts towards the covered year.
     assert.deepEqual([...parsed.holidays], ["2028-02-29"]);
     assert.equal(parsed.workdays.size, 0);
     assert.deepEqual([...parsed.coveredYears], [2028]);

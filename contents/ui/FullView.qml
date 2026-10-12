@@ -1,3 +1,4 @@
+// FullView.qml - the popup: status row, balance row and the timeline.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -17,23 +18,16 @@ Item {
     required property var scheduleOptions
     required property bool balanceEnabled
     required property string balanceState
-    // True when DeepSeek flags the account as not usable for API calls
-    // (is_available === false); the value is still shown, plus a notice.
     required property bool balanceUnavailable
     required property string balanceText
-    // Resolved colours and opacity of the card (see main.qml).
     required property var theme
     required property int glassOpacity
 
-    // The detail view only requests; KWallet and HTTP are known to main.qml.
     signal balanceRefreshRequested()
 
     readonly property bool showStatus: displayMode !== "timeline"
     readonly property bool showTimeline: displayMode !== "status"
 
-    // Text of the balance row: depending on the state a value or a notice. With
-    // "ok" a value is guaranteed, because main.qml reports the valueless case as
-    // "empty".
     readonly property string balanceStatusText: {
         if (balanceState === "ok") {
             return i18n("Balance: %1", balanceText);
@@ -61,22 +55,12 @@ Item {
 
     implicitWidth: 360
 
-    // Width the children get after the padding: the timeline is laid out for
-    // exactly this width, so card and content agree (the timeline used to claim
-    // 400 px, which the card never gave it).
     readonly property int contentWidth: implicitWidth - contentMargins * 2
 
-    // gridUnit replaces the inner padding the Plasma frame used to provide: it
-    // follows the desktop font and is ~18 px with the default font (the comment
-    // here used to claim that largeSpacing would be, which is 8 px).
     readonly property int contentMargins: Kirigami.Units.gridUnit
 
     implicitHeight: content.implicitHeight + contentMargins * 2
 
-    // The widget paints its card on top of the popup frame Plasma draws around
-    // it - that frame belongs to the shell, the applet cannot switch it off. The
-    // colours come from the selected theme: "glass" shows the card colour at the
-    // configured opacity, "solid" opaque, "transparent" without a surface.
     readonly property color panelColor: root.theme.background
     readonly property color textColor: root.theme.foreground
     readonly property color positiveColor: root.theme.positive
@@ -91,14 +75,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: root.backgroundStyle !== "transparent"
-        // Same radius as the Plasma popup frame around the card (Kirigami's own
-        // popups use this value too), so the card corners cannot stick out over
-        // the frame's corners. cornerRadius was added after Plasma 6.0, so on an
-        // older Kirigami the previous fixed value keeps the corners round.
+        // Older Kirigami versions do not expose cornerRadius.
         radius: Kirigami.Units.cornerRadius !== undefined ? Kirigami.Units.cornerRadius : 10
         color: root.surfaceColor
-        // Thin border, so the card stays recognisable as a surface even over a
-        // bright wallpaper.
         border.width: root.backgroundStyle === "glass" ? 1 : 0
         border.color: root.borderColor
     }
@@ -151,8 +130,6 @@ Item {
             text: i18n("Changes at %1", Qt.formatDateTime(new Date(root.nextChange.ms), "ddd HH:mm"))
         }
 
-        // Remaining balance from /user/balance. The value is refreshed only on
-        // expanding and on click, hence the button next to it.
         RowLayout {
             Layout.fillWidth: true
             visible: root.balanceEnabled && root.showStatus
@@ -178,8 +155,6 @@ Item {
             }
         }
 
-        // Extra notice when the value is there but the account is not usable for
-        // API calls (is_available === false).
         Label {
             Layout.fillWidth: true
             visible: root.showStatus && root.balanceState === "ok" && root.balanceUnavailable

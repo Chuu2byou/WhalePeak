@@ -14,14 +14,11 @@ const balance = loadQmlLibrary("contents/code/balance.js", [
     "WALLET_TIMEOUT_MS"
 ]);
 
-// The endpoint and the timeout are shared with main.qml and configGeneral.qml, so
-// a silent change would break both UIs at once.
 test("exposes the shared endpoint and timeout constants", () => {
     assert.equal(balance.BALANCE_API_URL, "https://api.deepseek.com/user/balance");
     assert.equal(balance.WALLET_TIMEOUT_MS, 20000);
 });
 
-// Example response as described in the DeepSeek API reference.
 const USD_RESPONSE = JSON.stringify({
     is_available: true,
     balance_infos: [
@@ -58,7 +55,6 @@ test("treats a rejected API token as unauthorized", () => {
 test("reports other status codes and network failures as error", () => {
     assert.equal(balance.parseBalance(500, "").state, "error");
     assert.equal(balance.parseBalance(429, "").state, "error");
-    // 0 in QML means the request never reached the network.
     assert.equal(balance.parseBalance(0, "").state, "error");
 });
 
@@ -89,7 +85,6 @@ test("skips unusable entries and converts numbers to text", () => {
             toppedUpBalance: ""
         }
     ]);
-    // Without the is_available field the account stays usable.
     assert.equal(result.isAvailable, true);
 });
 
@@ -98,8 +93,6 @@ test("only clears is_available on an explicit false", () => {
     assert.equal(balance.parseBalance(200, response).isAvailable, false);
 });
 
-// A success without a displayable entry stays "ok"; the UI must treat this case
-// as its own state, otherwise it would read "Balance: " without a value.
 test("an ok answer without a usable entry selects nothing", () => {
     const result = balance.parseBalance(200, JSON.stringify({ is_available: true, balance_infos: [] }));
 
@@ -145,7 +138,6 @@ test("strips paste leftovers around the API key", () => {
     assert.equal(balance.normalizeKey(""), "");
     assert.equal(balance.normalizeKey(null), "");
     assert.equal(balance.normalizeKey(undefined), "");
-    // A single quote is no pair and stays as is.
     assert.equal(balance.normalizeKey('"sk-abc'), '"sk-abc');
 });
 
@@ -167,11 +159,9 @@ test("keeps special characters inside the printf argument", () => {
         command,
         "printf %s 'sk-a'\\''s$(touch /tmp/x)`' | kwallet-query -w 'e' -f 'f' 'w'"
     );
-    // Exactly one pipe character: no second command can come out of the key.
     assert.equal(command.split("|").length, 2);
 });
 
-// 0 is falsy, so a naive `value || ""` would drop a real zero balance.
 test("keeps a numeric zero balance", () => {
     const result = balance.parseBalance(200, JSON.stringify({
         balance_infos: [{ currency: "USD", total_balance: 0 }]
