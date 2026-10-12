@@ -1,19 +1,3 @@
-# WhalePeak - convenience targets for installation and updates.
-#
-#   make install     install or update the applet
-#   make update      update and restart plasmashell
-#   make check       compare source and installed version
-#   make uninstall   remove the applet and the icon
-#   make package     build dist/whalepeak.plasmoid
-#   make release     tag the current version and push the tag
-#   make test        run the unit tests
-#   make probe       render and check the timeline without plasmashell
-#   make images      render the images in assets/ (README)
-#   make lint        check the QML files with qmllint
-#   make lint-md     check README.md with markdownlint (npx)
-#   make bump VERSION=1.1.0   set the version in metadata.json
-#   make clean       delete the build folder dist/
-
 SHELL := bash
 
 .PHONY: help install update check uninstall package release test probe images lint lint-md bump clean

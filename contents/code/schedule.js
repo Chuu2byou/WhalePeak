@@ -1,25 +1,15 @@
 .pragma library
 
-// Peak/off-peak classification and the next tariff change.
+// schedule.js - the DeepSeek peak windows, expressed in Beijing time (UTC+8).
 
 var HOUR_MS = 60 * 60 * 1000;
 var DAY_MS = 24 * HOUR_MS;
 var MAX_SEARCH_MS = 30 * DAY_MS;
 
-// Minutes after UTC midnight at which the tariff status can change: the two
-// peak windows start and end here, and at 16:00 UTC the Beijing date rolls over
-// (16:00 UTC = 00:00 Beijing) - that also flips weekday/weekend/holiday and with
-// them the base classification.
-//
-// The two peak windows follow DeepSeek's published off-peak discount, see
-// <https://api-docs.deepseek.com/quick_start/pricing>. Unlike the colour
-// palettes there is no bundled source to compare against, so these values are a
-// snapshot: re-check them when DeepSeek changes the windows.
-//
-// Every transition sits on a UTC full hour, which is why main.qml and
-// tests/fixtures/render-images.qml can cache the result per hour.
+// UTC transition minutes from DeepSeek pricing; 16:00 UTC is Beijing midnight.
 var UTC_CHANGE_MINUTES = [60, 240, 360, 600, 16 * 60];
 
+// getBeijingDateStr - the Beijing date (UTC+8) of a timestamp, as YYYY-MM-DD.
 function getBeijingDateStr(ms) {
     var date = new Date(ms + 8 * HOUR_MS);
     var year = date.getUTCFullYear();
@@ -28,12 +18,13 @@ function getBeijingDateStr(ms) {
     return year + "-" + month + "-" + day;
 }
 
-// Weekday (0 = Sunday) of the Beijing calendar date.
+// weekdayOf - weekday of a YYYY-MM-DD string (0 = Sunday).
 function weekdayOf(dateStr) {
     var parts = dateStr.split("-");
     return new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))).getUTCDay();
 }
 
+// isPeakDay - true on weekdays, false on holidays; weekends only as makeup workdays.
 function isPeakDay(dateStr, cal, opts) {
     if (cal.holidays.has(dateStr)) {
         return false;
@@ -47,6 +38,7 @@ function isPeakDay(dateStr, cal, opts) {
     return opts.treatWeekendWorkdayAsPeak && cal.workdays.has(dateStr);
 }
 
+// getStatus - the tariff state at a timestamp, together with the reason for it.
 function getStatus(ms, cal, opts) {
     var dateStr = getBeijingDateStr(ms);
     var year = Number(dateStr.slice(0, 4));
@@ -78,9 +70,7 @@ function getStatus(ms, cal, opts) {
     };
 }
 
-// Always returns an object: `ms` and `toPeak` are `null` when no transition was
-// found within the search horizon. The coverage information from the full 30 day
-// scan is kept in that case too.
+// getNextChange - the next switch to the other tariff, up to 30 days ahead.
 function getNextChange(ms, cal, opts) {
     var horizon = ms + MAX_SEARCH_MS;
     var initialStatus = getStatus(ms, cal, opts);

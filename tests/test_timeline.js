@@ -20,10 +20,7 @@ const HOUR = timeline.HOUR_MS;
 const SPAN = timeline.WINDOW_HOURS;
 const WIDTH = 400;
 
-// The timeline works in local wall clock time, so the tests build their instants
-// the same way. Only relative properties are checked then, so the tests are
-// independent of the test machine's timezone. All dates deliberately lie outside
-// any daylight-saving change.
+// Use local time and avoid DST transition dates.
 function localTime(year, month, day, hour, minute) {
     return new Date(year, month - 1, day, hour, minute).getTime();
 }
@@ -59,16 +56,12 @@ test("cellStarts covers a full window in one hour steps", () => {
     for (let i = 1; i < starts.length; i++) {
         assert.equal(starts[i] - starts[i - 1], HOUR);
     }
-    // The first cell starts before "now" and is clipped on the left ...
     assert.ok(starts[0] <= now);
     assert.ok(now - starts[0] < HOUR);
-    // ... the last reaches the end of the window or beyond.
     assert.ok(starts[starts.length - 1] + HOUR >= now + SPAN * HOUR);
 });
 
 test("cellStarts stays the same inside one hour", () => {
-    // Basis for the hourly rebuild in Timeline.qml: only the x positions slide,
-    // the model itself stays put.
     const start = plain(timeline.cellStarts(localTime(2026, 7, 15, 13, 0), SPAN));
     const later = plain(timeline.cellStarts(localTime(2026, 7, 15, 13, 59), SPAN));
 
@@ -112,7 +105,6 @@ test("the first cell is clipped at the left edge", () => {
     const first = plain(timeline.cellRect(starts[0], now, SPAN, WIDTH));
 
     assert.equal(first.x, 0);
-    // Half an hour visible, because "now" sits at half past.
     assert.ok(Math.abs(first.width - WIDTH / SPAN / 2) < 1e-9);
 });
 
@@ -139,7 +131,6 @@ test("tickStarts follows the four hour grid inside the window", () => {
         assert.ok(ms > now - HOUR, `label lies in the past: ${ms}`);
         assert.ok(ms <= now + SPAN * HOUR, `label lies beyond the window: ${ms}`);
     }
-    // 16:00 (local) lies inside the window and must be labelled.
     assert.ok(ticks.some((ms) => localHour(ms) === 16 && new Date(ms).getDate() === 15));
 });
 

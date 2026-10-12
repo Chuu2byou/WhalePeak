@@ -1,16 +1,14 @@
 .pragma library
 
-// Splits a duration into its parts and composes the readable texts from them.
-// Pure data, so the logic stays testable; the actual translation happens in the
-// caller, because i18n() is not available in a .pragma library file. The views
-// pass their translate function in, so the widget, the render fixture and the
-// tests share one wording instead of keeping copies in sync by hand.
+// duration.js - splits a remaining time and renders the countdown texts.
+//
+// The caller supplies translation; i18n() is unavailable in library JS.
 
 var SECONDS_PER_MINUTE = 60;
 var SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
 var SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
 
-// Rounds up to whole seconds and clamps negative input to zero.
+// splitDuration - breaks a millisecond span into days, hours, minutes and seconds.
 function splitDuration(milliseconds) {
     var totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
     return {
@@ -22,9 +20,7 @@ function splitDuration(milliseconds) {
     };
 }
 
-// Readable duration ("2 d 3 h", "1 h 13 min", "4 min 5 s", "42 s"). `translate`
-// is the caller's i18n() wrapper; it receives the text and the two placeholders
-// it may use, and returns the finished string.
+// formatDuration - renders the two largest non-zero parts, e.g. "1 h 13 min".
 function formatDuration(milliseconds, translate) {
     var parts = splitDuration(milliseconds);
     if (parts.days > 0) {
@@ -39,9 +35,7 @@ function formatDuration(milliseconds, translate) {
     return translate("%1 s", parts.seconds);
 }
 
-// Second line of the panel tooltip: "Peak \u00b7 1 h 13 min left \u00b7 Balance:
-// 12.34 USD". `statusText` is already translated ("Peak"/"Off-peak"),
-// `remainingText` and `balanceText` are empty when that part is not shown.
+// tooltipSubText - joins state, remaining time and balance into one tooltip line.
 function tooltipSubText(statusText, remainingText, balanceText, translate) {
     var base = remainingText.length > 0
         ? translate("%1 \u00b7 %2 left", statusText, remainingText)

@@ -1,4 +1,3 @@
-// Tests for contents/code/palette.js (colour themes and opacity).
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { loadQmlLibrary, plain } = require("./helpers/qml_library.js");
@@ -12,7 +11,6 @@ const palette = loadQmlLibrary("contents/code/palette.js", [
     "systemTheme"
 ]);
 
-// Contract: every theme returns exactly these colour keys.
 const KEYS = ["background", "foreground", "positive", "negative", "border"];
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -49,7 +47,6 @@ test("display names are proper nouns and stay usable for the model", () => {
     palette.themeNames().forEach((name) => {
         assert.ok(palette.displayName(name).length > 0, name);
     });
-    // Unknown names are passed through, so the model does not end up empty.
     assert.equal(palette.displayName("nope"), "nope");
 });
 
@@ -84,11 +81,8 @@ test("unusable opacity values fall back to the default", () => {
     });
 });
 
-// Colour helpers: pure functions on hex values, so the thresholds are testable
-// without Plasma.
 test("the colour helpers read and write hex values", () => {
     assert.deepEqual(plain(palette.hexToRgb("#a3be8c")), { r: 163, g: 190, b: 140 });
-    // Alpha is read but not counted.
     assert.deepEqual(plain(palette.hexToRgb("#80a3be8c")), { r: 163, g: 190, b: 140 });
     ["nord", "#12345", "#zzzzzz", "", null, undefined].forEach((value) => {
         assert.equal(palette.hexToRgb(value), null, String(value));
@@ -153,8 +147,7 @@ test("system and unknown names have no palette to derive from", () => {
     assert.equal(palette.resolveThemeColors(null), null);
 });
 
-// Rosé Pine carries no green upstream: off-peak therefore stays Foam (cyan)
-// rather than some foreign green.
+// Preserve Rosé Pine's upstream cyan off-peak colour.
 test("Rose Pine keeps Foam as its off-peak colour", () => {
     assert.equal(palette.getTheme("rosePine").positive, "#9ccfd8");
     assert.equal(palette.resolveTheme("rosePine").positive, "#9ccfd8");
@@ -174,14 +167,11 @@ test("unusable colours are passed through instead of tinted", () => {
     assert.equal(resolved.border, "#45475a");
 });
 
-// systemTheme is the shared builder for the Plasma colour scheme (main.qml and
-// configGeneral.qml); it must produce the same five keys as a bundled theme.
 test("systemTheme wraps the colour scheme in the five theme keys", () => {
     const theme = palette.systemTheme("#1e1e2e", "#cdd6f4", "#a6e3a1", "#f38ba8", "#45475a");
     assert.deepEqual(Object.keys(theme).sort(), KEYS.slice().sort());
     assert.equal(theme.background, "#1e1e2e");
     assert.equal(theme.border, "#45475a");
-    // The derivation runs here too: the drawn states hold the graphic contrast.
     assert.ok(palette.contrastRatio(theme.positive, theme.background)
         >= palette.MIN_GRAPHIC_CONTRAST);
     assert.ok(palette.contrastRatio(theme.negative, theme.background)

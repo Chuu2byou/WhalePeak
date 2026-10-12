@@ -5,7 +5,7 @@ const { loadQmlLibrary } = require("./helpers/qml_library.js");
 
 const duration = loadQmlLibrary("contents/code/duration.js", ["splitDuration", "formatDuration", "tooltipSubText"]);
 
-// Builds an object in the test world; splitDuration returns objects from the VM context.
+// Normalize values from the VM context for deep equality.
 function pick(parts) {
     return {
         days: parts.days,
@@ -38,8 +38,6 @@ test("rolls over at the minute, hour and day boundary", () => {
     assert.deepEqual(pick(duration.splitDuration(86_400_000)), { days: 1, hours: 0, minutes: 0, seconds: 0 });
 });
 
-// The wording lives in duration.js; main.qml and the render fixture only pass
-// their i18n()/stub wrapper in. A stand-in records the call and joins the parts.
 function translate(text) {
     const args = Array.prototype.slice.call(arguments, 1);
     return String(text).replace(/%([0-9]+)/g, (match, index) => {

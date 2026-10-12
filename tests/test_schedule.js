@@ -21,9 +21,7 @@ const weekdayPeak = Date.UTC(2026, 9, 6, 2);
 const weekdayOffWindow = Date.UTC(2026, 9, 6, 5);
 const defaultOptions = { treatWeekendWorkdayAsPeak: false };
 
-// Checks the documented shape, not a concrete value. The fixed field count is
-// intentional: an extra field is a contract change and should show up here
-// instead of slipping through silently.
+// Fixed field counts make API shape changes explicit.
 function assertStatusShape(status) {
     assert.equal(Object.keys(status).length, 4);
     assert.equal(typeof status.isPeak, "boolean");
@@ -146,7 +144,6 @@ test("a calendar without covered years reports uncovered but still finds changes
 
     assert.equal(status.calendarCovered, false);
     assert.equal(nextChange.calendarCovered, false);
-    // The base rule applies regardless of the calendar, the next change stays.
     assert.equal(status.isPeak, true);
     assert.notEqual(nextChange.ms, null);
 });

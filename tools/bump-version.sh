@@ -54,7 +54,6 @@ def read_version():
         return json.load(handle)["KPlugin"]["Version"]
 
 
-# Before replacing, check that the file is readable and matches the expected version.
 if read_version() != current:
     sys.exit("metadata.json differs from the expected version")
 
@@ -65,7 +64,6 @@ if count != 1:
 
 open(path, "w", encoding="utf-8").write(updated)
 
-# After replacing, make sure the file stays valid and matches.
 if read_version() != new_version:
     sys.exit("Could not set the version in metadata.json")
 
